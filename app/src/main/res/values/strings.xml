@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Android-TessTwo</string>
+    <string name="FirstMessage">인식할 문자를 찍어주세요.</string>
+    <string name="LoadingMessage">잠시만 기다려주세요.결과가 여기에 나타납니다.</string>
+    <string name="CompleteMessage">문자인식이 완료되었습니다.</string>
+
 </resources>
