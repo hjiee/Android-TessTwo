@@ -20,7 +20,9 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
+import android.support.v4.widget.CircularProgressDrawable;
 import android.support.v7.app.AppCompatActivity;
+import android.telecom.Call;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -40,40 +42,42 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
-    // true  : Camera On
-    // false : Camera Off
+    // true  : Camera On  : 카메라로 직접 찍어 문자 인식
+    // false : Camera Off : 샘플이미지를 로드하여 문자 인식
     private boolean CameraOnOffFlag = true;
 
     private TessBaseAPI m_Tess; //Tess API reference
     private ProgressCircleDialog m_objProgressCircle = null; // 원형 프로그레스바
     private MessageHandler m_messageHandler;
 
-    private long m_start;
-    private long m_end;
+    private long m_start; // 처리시간 시작지점
+    private long m_end; //처리시간 끝지점
     private String mDataPath = ""; //언어데이터가 있는 경로
     private String mCurrentPhotoPath; // 사진 경로
     private final String[] mLanguageList = {"eng","kor"}; // 언어
     // View
     private Context mContext;
-    private Button m_btnOCR;
-    private TextView m_ocrTextView;
-    private ImageView m_ivImage;
+    private Button m_btnOCR; // 인식하기 위해 사진찍는 버튼
+    private TextView m_ocrTextView; // 결과 변환 텍스트
+    private ImageView m_ivImage; // 찍은 사진
     private Bitmap image; //사용되는 이미지
-    private TextView m_tvTime;
-
-    private File m_file;
+    private TextView m_tvTime; // 처리시간 표시 텍스트
 
     private boolean ProgressFlag = false; // 프로그레스바 상태 플래그
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mContext = this;
-        m_btnOCR = findViewById(R.id.btn_OCR);
-        m_btnOCR.setOnClickListener(this);
+
         m_ivImage = findViewById(R.id.iv_image);
         m_ocrTextView = findViewById(R.id.tv_view);
         m_tvTime = findViewById(R.id.tv_time);
+        m_btnOCR = findViewById(R.id.btn_OCR);
+
+        m_btnOCR.setOnClickListener(this);
+
         m_objProgressCircle = new ProgressCircleDialog(this);
         m_messageHandler = new MessageHandler();
 
@@ -84,6 +88,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         else
         {
+            //이미지 디코딩을 위한 초기화
+            image = BitmapFactory.decodeResource(getResources(), R.drawable.sampledata); //샘플이미지파일
             Test();
         }
     }
@@ -103,7 +109,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         m_start = System.currentTimeMillis();
                         File file = new File(mCurrentPhotoPath);
                         Bitmap rotatedBitmap = null;
-                        Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), FileProvider.getUriForFile(MainActivity.this, getApplicationContext().getPackageName() + ".fileprovider", file));
+                        Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(),
+                                FileProvider.getUriForFile(MainActivity.this,
+                                        getApplicationContext().getPackageName() + ".fileprovider", file));
 
                         // 회전된 사진을 원래대로 돌려 표시한다.
                         if (bitmap != null) {
@@ -132,7 +140,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             ocrThread.setDaemon(true);
                             ocrThread.start();
                             m_ivImage.setImageBitmap(rotatedBitmap);// 카메라로 찍은 사진을 뷰에 표시한다.
-                            m_ocrTextView.setText(getResources().getString(R.string.LoadingMessage)); //텍스트 변경
+                            m_ocrTextView.setText(getResources().getString(R.string.LoadingMessage)); //인식된텍스트 표시
                         }
                     } catch (Exception e) {
                     }
@@ -186,18 +194,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED &&
                     checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
                 // 권한 없음
-                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, ConstantDefine.PERMISSION_CODE);
+                ActivityCompat.requestPermissions(MainActivity.this,
+                        new String[]{Manifest.permission.CAMERA,
+                                Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                        ConstantDefine.PERMISSION_CODE);
             } else {
                 // 권한 있음
-
             }
         }
     }
 
 
     public void Tesseract() {
-        //이미지 디코딩을 위한 초기화
-        image = BitmapFactory.decodeResource(getResources(), R.drawable.sampledata); //샘플이미지파일
         //언어파일 경로
         mDataPath = getFilesDir() + "/tesseract/";
 
@@ -207,13 +215,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             checkFile(new File(mDataPath + "tessdata/"), Language);
             lang += Language + "+";
         }
-        lang = lang.substring(0,lang.length()-1);
         m_Tess = new TessBaseAPI();
         m_Tess.init(mDataPath, lang);
-
-//        checkFile(new File(mDataPath + "tessdata/"), "kor");
-//        m_Tess = new TessBaseAPI();
-//        m_Tess.init(mDataPath, "kor");
     }
 
     private File createImageFile() throws IOException {
@@ -240,14 +243,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         // Ensure that there's a camera activity to handle the intent
         if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-            // Create the File where the photo should go
+            // 사진파일을 생성한다.
             File photoFile = null;
             try {
                 photoFile = createImageFile();
             } catch (IOException ex) {
                 // Error occurred while creating the File
             }
-            // Continue only if the File was successfully created
+            // 사진파일이 정상적으로 생성되었을때
             if (photoFile != null) {
                 Uri photoURI = FileProvider.getUriForFile(this,
                         this.getApplicationContext().getPackageName()+".fileprovider",
@@ -327,6 +330,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
     //endregion
+
     //region Handler
     public class MessageHandler extends Handler
     {
@@ -419,12 +423,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         OCRThread ocrThread = new OCRThread(image);
         ocrThread.setDaemon(true);
         ocrThread.start();
-
-//        String OCRresult = null;
-//        m_Tess.setImage(image);
-//        OCRresult = m_Tess.getUTF8Text();
-//        TextView OCRTextView = findViewById(R.id.tv_view);
-//        OCRTextView.setText(OCRresult);
     }
 
 }

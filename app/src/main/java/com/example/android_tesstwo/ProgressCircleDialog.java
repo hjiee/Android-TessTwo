@@ -6,9 +6,6 @@ import android.view.WindowManager;
 import android.widget.ProgressBar;
 
 /**
- * Created by anymobi on 2016-03-29.
- *
- *
  * atrr 속성 필요함
  * res>values>styles>newDialog  필요함
  *
@@ -32,13 +29,13 @@ public class ProgressCircleDialog extends Dialog {
 
 
     public static ProgressCircleDialog show(Context context, CharSequence title,
-                                                    CharSequence message, boolean indeterminate,
-                                                    boolean cancelable, OnCancelListener cancelListener) {
+                                            CharSequence message, boolean indeterminate,
+                                            boolean cancelable, OnCancelListener cancelListener) {
         ProgressCircleDialog dialog = new ProgressCircleDialog(context);
         dialog.setTitle(title);
         dialog.setCancelable(cancelable);
         dialog.setOnCancelListener(cancelListener);
-     /* The next line will add the ProgressBar to the dialog. */
+        /* The next line will add the ProgressBar to the dialog. */
         dialog.addContentView(new ProgressBar(context), new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT));
         dialog.show();
 
